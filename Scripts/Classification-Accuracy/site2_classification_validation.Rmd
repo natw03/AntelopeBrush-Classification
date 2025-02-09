@@ -1,0 +1,68 @@
+---
+title: "site2_classification_validation"
+author: "Natalie Woo"
+date: "2024-12-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages, message=F}
+library(mlr3)
+library(mlr3learners)
+library(mlr3spatial)
+library(terra)
+library(sf)
+library(ggplot2)
+library(tidyterra)
+library(here)
+```
+
+# Import Data
+Import accuracy polygons and classified raster 
+```{r}
+site2_poly <- vect(here("Data", "site2", "site2_accuracy_poly.shp"))
+site2_classified <- rast(here("Data", "site2", "site2_classified.tif"))
+```
+
+# Create points at the same locations containing information of the correct class and classified class
+"correct" class is provided by the "accuracy_pts" dataset, which contains points from polygons we drew ourselves
+```{r}
+# Create empty spatvector to store points
+site2_accuracy_pts <- vect()
+```
+
+```{r}
+#Loop through each polygon in the shapefile
+set.seed(103)
+for (i in 1:nrow(site2_poly)) {
+  single_poly <- site2_poly[i, ]
+  randomPts <- spatSample(single_poly, 200, method = "random")
+  site2_accuracy_pts <- rbind(site2_accuracy_pts, randomPts)
+}
+print(site2_accuracy_pts)
+```
+
+```{r}
+#Save points as a shapefile
+writeVector(site2_accuracy_pts, here("Data", "site2", "site2_accuracy_pts.shp"), filetype = "ESRI Shapefile", overwrite=T)
+```
+
+```{r}
+#Extract classes from the classified raster, at the random points previously generated
+site2_classified_pts <- extract(site2_classified, site2_accuracy_pts)
+```
+
+#Prepare for comparison between "accuracy_pts" and "classified_pts"
+```{r}
+site2_classified_pts <- site2_classified_pts[,2]
+site2_accuracy_pts <- site2_accuracy_pts$className
+```
+
+```{r}
+site2_accuracy_vect <- site2_classified_pts == site2_accuracy_pts
+  site2_accuracy <- sum(site2_accuracy_vect) / length(site2_accuracy_vect)
+  print(paste("Classification Accuracy for site2:", site2_accuracy))
+```
