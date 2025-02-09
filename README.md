@@ -8,4 +8,5 @@ The error analysis portion evaluates how classification accuracy differs within-
 
 ## Authors
 Natalie Woo
+
 Email: natalie.woo@ubc.ca
