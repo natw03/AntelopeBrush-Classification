@@ -1,0 +1,68 @@
+---
+title: "site4_classification_validation"
+author: "Natalie Woo"
+date: "2024-12-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages, message=F}
+library(mlr3)
+library(mlr3learners)
+library(mlr3spatial)
+library(terra)
+library(sf)
+library(ggplot2)
+library(tidyterra)
+library(here)
+```
+
+# Import Data
+Import accuracy polygons and classified raster 
+```{r}
+site4_poly <- vect(here("Data", "site4", "site4_accuracy_poly.shp"))
+site4_classified <- rast(here("Data", "site4", "site4_classified.tif"))
+```
+
+# Create points at the same locations containing information of the correct class and classified class
+"correct" class is provided by the "accuracy_pts" dataset, which contains points from polygons we drew ourselves
+```{r}
+# Create empty spatvector to store points
+site4_accuracy_pts <- vect()
+```
+
+```{r}
+#Loop through each polygon in the shapefile
+set.seed(103)
+for (i in 1:nrow(site4_poly)) {
+  single_poly <- site4_poly[i, ]
+  randomPts <- spatSample(single_poly, 200, method = "random")
+  site4_accuracy_pts <- rbind(site4_accuracy_pts, randomPts)
+}
+print(site4_accuracy_pts)
+```
+
+```{r}
+#Save points as a shapefile
+writeVector(site4_accuracy_pts, here("Data", "site4", "site4_accuracy_pts.shp"), filetype = "ESRI Shapefile", overwrite=T)
+```
+
+```{r}
+#Extract classes from the classified raster, at the random points previously generated
+site4_classified_pts <- extract(site4_classified, site4_accuracy_pts)
+```
+
+#Prepare for comparison between "accuracy_pts" and "classified_pts"
+```{r}
+site4_classified_pts <- site4_classified_pts[,2]
+site4_accuracy_pts <- site4_accuracy_pts$className
+```
+
+```{r}
+site4_accuracy_vect <- site4_classified_pts == site4_accuracy_pts
+  site4_accuracy <- sum(site4_accuracy_vect) / length(site4_accuracy_vect)
+  print(paste("Classification Accuracy for site4:", site4_accuracy))
+```
